@@ -1,0 +1,240 @@
+/********************************************************************
+ *  Simple Group of Filing Applications
+ *  Sample Cascading Style Sheet
+ * 
+ *  Copyright (C) 2015 by Graham A. Field.
+ * 
+ *  See LICENSE.txt for licensing information.
+ * 
+ *  This program is distributed WITHOUT ANY WARRANTY; without even the
+ *  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*********************************************************************/
+
+div#sgfa_web {
+  font-family: sans-serif;
+  font-size: 10pt;
+}
+
+div#sgfa_web a {
+  color:blue;
+  text-decoration: none;
+}
+
+div#sgfa_web a:hover {
+  text-decoration: underline;
+}
+
+
+/* title bar */
+div#sgfa_web div.title_bar {
+  width: 100%;
+  padding: 4px;
+}
+
+div#sgfa_web div.title_bar:after {
+  content: " ";
+  display: block; 
+  height: 0; 
+  clear: both;
+}
+
+div#sgfa_web div.title_bar div.title {
+  float: left;
+  font-size: 150%;
+}
+
+div#sgfa_web div.title_bar div.user {
+  float: right;
+}
+
+/* nav bar */
+div#sgfa_web div.nav_bar {
+  clear: both;
+  position: relative;
+  width: 100%;
+  font-size: 110%;
+  border-bottom: solid 3px #c0c0c0;
+}
+
+div#sgfa_web div.nav_bar div {
+  padding: 3px;
+  display: inline;
+}
+
+div#sgfa_web div.nav_bar div.active {
+  background: #c0c0c0;
+}
+
+div#sgfa_web div.nav_bar a {
+  text-decoration: none;
+  color:darkblue;
+}
+
+/* message */
+div#sgfa_web div.message {
+  clear: both;
+  width: 100%;
+  color: #6600ff;
+  font-size: 125%;
+  border-bottom: solid thin black;
+}
+
+/* data table */
+div#sgfa_web table.data td.type {
+  vertical-align:top;
+  text-align: right;
+  font-weight: bold;
+}
+
+div#sgfa_web table.data td.fix {
+  font-family: monospace;
+}
+
+div#sgfa_web table.data td.multi pre {
+  vertical-align:top;
+  margin:0;
+}
+
+/* list table */
+div#sgfa_web table.list {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+div#sgfa_web table.list tr:nth-child(odd) {
+  background: white;
+}
+
+div#sgfa_web table.list tr:nth-child(even) {
+  background: #f6f6f6;
+}
+
+div#sgfa_web table.list th {
+  text-align: left;
+  color: green;
+}
+
+div#sgfa_web table.list td.hash {
+  font-family: monospace;
+}
+
+
+/* edit tables */
+div#sgfa_web form.edit fieldset {
+  width: 98%;
+  margin: auto;
+}
+
+div#sgfa_web form.edit fieldset legend {
+  color: green;
+  font-weight: bold;
+}
+
+div#sgfa_web form.edit p {
+  clear: both;
+  padding: 3px;
+}
+
+div#sgfa_web form.edit label {
+  float: left;
+  width: 8em;
+  text-align: right;
+}
+
+/* edit tag table */
+div#sgfa_web table.edit_tag th {
+  text-align: center;
+  text-decoration: underline;
+}
+
+div#sgfa_web table.edit_tag tr {
+  border: thick solid red;
+}
+
+
+/* edit file table */
+div#sgfa_web table.edit_file th {
+  text-align: center;
+  text-decoration: underline;
+}
+
+div#sgfa_web table.edit_file td.fname {
+  min-width: 10em;
+}
+
+
+/* edit form */
+div#sgfa_web form.edit input[type=submit] {
+  border: 1px solid grey;
+  border-radius: 5px;
+  padding: 2px;
+  background: radial-gradient(rgb(245, 245, 245), rgb(200, 200, 200));
+}
+
+div#sgfa_web form.edit textarea {
+  font-family: inherit;
+  font-size: inherit;
+  width: 50em;
+  height: 15em;
+}
+
+div#sgfa_web form.edit input.title {
+  font-family: inherit;
+  font-size: inherit;
+  width: 50em;
+}
+
+div#sgfa_web form.edit input.tag {
+  width: 15em;
+}
+
+
+/* entry */
+div#sgfa_web div.entry_left {
+  float: left;
+  width: 80%;
+}
+
+div#sgfa_web div.mainbody div.title {
+  width: 100%;
+  font-size: 125%;
+  border-bottom: thin solid;
+}
+
+div#sgfa_web div.mainbody div.body {
+  float: left;
+  width: 67%;
+}
+
+div#sgfa_web div.mainbody div.sidebar {
+  float: right;
+  width: 30%;
+  border-left: thin solid;
+}
+
+div#sgfa_web div.mainbody div.sidebar div.time {
+  border-bottom: thin dotted;
+}
+
+div#sgfa_web div.mainbody div.sidebar div.history {
+  border-bottom: thin dotted;
+}
+
+div#sgfa_web div.mainbody div.sidebar div.tags {
+  border-bottom: thin dotted;
+}
+
+div#sgfa_web div.attach {
+}
+
+div#sgfa_web div.mainbody div.sidebar div.user {
+  border-bottom: thin dotted;
+}
+
+div#sgfa_web div.hash {
+  width: 100%;
+  clear: both;
+  border-top: thin solid;
+  font-family: monospace;
+  font-size: 75%;
+}
