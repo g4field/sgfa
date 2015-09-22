@@ -1,0 +1,36 @@
+{
+  "jackets": [
+    {
+      "name": "main",
+      "title": "The primary jacket.",
+      "perms": []
+    },
+    {
+      "name": "sensitive",
+      "title": "Sensitive data goes in here.",
+      "perms": [ "core" ]
+    }
+  ],
+  "users": [
+    {
+      "name": "user alpha",
+      "perms": [ "manage", "write", "core" ]
+    },
+    {
+      "name": "user bravo",
+      "perms": [ "write", "core" ]
+    },
+    {
+      "name": "user charlie",
+      "perms": [ "read", "core" ]
+    },
+    {
+      "name": "user delta",
+      "perms": [ "read" ]
+    }
+  ],
+  "values": [
+    [ "status", "open" ],
+    [ "priority", "standard" ]
+  ]
+}
