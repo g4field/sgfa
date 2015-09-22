@@ -9,6 +9,9 @@
 # This program is distributed WITHOUT ANY WARRANTY; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
+# This ; prevents YARD from using the header as docs for Sgfa module
+;
+
 module Sgfa
 
 
