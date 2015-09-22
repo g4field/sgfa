@@ -145,7 +145,11 @@ class Binder
     if !info[:values].is_a?(Array)
       raise Error::Limits, 'Binder create info :values is not an array'
     end
-    info[:values].each do |vn, vs| 
+    info[:values].each do |ary|
+      if !ary.is_a?(Array)
+        raise Error::Limits, 'Binder create info :value items are not arrays'
+      end
+      vn, vs = ary
       Binder.limits_value(vn)
       Binder.limits_setting(vs)
     end
