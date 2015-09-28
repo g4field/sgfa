@@ -10,6 +10,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 require 'digest/sha2'
+require 'logger'
 
 require_relative 'error'
 require_relative 'history'
@@ -201,6 +202,7 @@ class Jacket
     end
     return ent
   end # def _read_entry()
+  private :_read_entry
 
 
   #####################################
@@ -396,6 +398,157 @@ class Jacket
 
     return hst
   end # def write()
+
+
+  #####################################
+  # Validate history chain
+  #
+  # @param opts [Hash] Option hash
+  # @option opts [Boolean] :hash_entry Validate entries by checking their
+  #   hash
+  # @option opts [Boolean] :hash_attach Validate attachments by checking
+  #   their hash
+  # @option opts [Fixnum] :max_history History number to stop checking.
+  #   Defaults to not stopping until missing history items stop the check.
+  # @option opts [Fixnum] :min_history History number to start checking.
+  #   Defaults to 1.
+  # @option opts [Fixnum] :miss_history Number of allowable missing history
+  #   items before checking stops.  Defaults to zero.
+  # @option opts [String] :max_hash Known good hash for :max_history item
+  # @option opts [Logger] :log The logger to use.  Defaults to STDERR log
+  # @return [Boolean] true if valid history chain
+  def check(opts={})
+    max = opts[:max_history] || 1000000000
+    min = opts[:min_history] || 1
+    stop = opts[:miss_history] || 0
+    if opts[:log]
+      log = opts[:log]
+    else
+      log = Logger.new(STDERR)
+      log.level = Logger::WARN
+    end
+
+    log.info('Begin validate jacket %s at %d' % [@id_hash, min])
+
+    miss = 0
+    hnum = min-1
+    prev = nil
+    good = true
+    while (hnum += 1) <= max
+      
+      # get history item
+      begin
+        hst = read_history(hnum)
+      rescue Error::NonExistent
+        miss += 1
+        if miss <= stop
+          next
+        else
+          hnum = hnum-miss+1
+          break
+        end
+      rescue Error::Corrupt => exp
+        log.error('History item corrupt %d' % hnum)
+        miss += 1
+        if miss <= stop
+          next
+        else
+          num = hnum-miss+1
+          break
+        end
+      end
+
+      # missing history items
+      if miss != 0
+        good = false
+        if miss == 1
+          log.error('History item missing %d' % (hnum-1))
+        else
+          log.error('HIstory items missing %d-%d' % [hnum-miss, hnum-1])
+        end
+        miss = 0
+        prev = nil
+      end
+
+      # check previous
+      if prev
+        if prev != hst.previous
+          good = false
+          log.error('History chain broken %d' % hnum)
+        else
+          log.debug('History chain matches %d' % hnum)
+        end
+      elsif hnum != min
+        log.warn('History chain not checked %d' % hnum)
+      end
+      prev = hst.hash
+
+      # entries
+      if opts[:hash_entry]
+        hst.entries.each do |enum, rnum, hash|
+          begin
+            ent = read_entry(enum, rnum)
+          rescue Error::NonExistent
+            log.info('Entry missing %d-%d' % [enum, rnum])
+            next
+          rescue Error::Corrupt
+            log.error('Entry corrupt %d-%d' % [enum, rnum])
+            good = false
+            next
+          end
+          if ent.hash != hash
+            log.error('Entry invalid %d-%d' % [enum, rnum])
+            good = false
+          else
+            log.debug('Entry is valid %d-%d' % [enum, rnum])
+          end
+        end
+      end
+
+      # attachments
+      if opts[:hash_attach]
+        hst.attachments.each do |enum, anum, hash|
+          begin
+            fil = read_attach(enum, anum, hnum)
+          rescue Error::NonExistent
+            log.info('Attachment missing %d-%d-%d' % [enum, anum, hnum])
+            next
+          end
+          begin
+            calc = Digest::SHA256.file(fil.path).hexdigest
+          ensure
+            fil.close
+          end
+          if calc != hash
+            log.error('Attachment invalid %d-%d-%d' % [enum, anum, hnum])
+            good = false
+          else
+            log.debug('Attachment is valid %d-%d-%d' % [enum, anum, hnum])
+          end
+        end
+      end
+
+      # last history check known good hash
+      if hnum == max && opts[:max_hash]
+        if hst.hash != opts[:max_hash]
+          log.error('Max history does not match known hash')
+          good = false
+        else
+          log.debug('Max history matches known hash')
+        end
+      end
+
+    end
+
+    log.info('History chain validation max %d' % (hnum-1))
+
+    if opts[:max_history] && hnum != opts[:max_history]
+      return false
+    else
+      return good
+    end
+
+  end # def check()
 
 
 end # class Jacket
