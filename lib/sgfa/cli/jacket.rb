@@ -9,9 +9,11 @@
 # This program is distributed WITHOUT ANY WARRANTY; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
+require 'aws-sdk'
 require 'thor'
 
 require_relative '../jacket_fs'
+require_relative '../store_s3'
 
 module Sgfa
 module Cli
@@ -269,6 +271,64 @@ class Jacket < Thor
 
   end # def check()
 
+
+  #####################################
+  # Backup to aws
+  desc 'backup_s3', 'Backup to AWS S3'
+  method_option :key, {
+    type: :string,
+    desc: 'Path of AWS credentials',
+    required: true,
+  }
+  method_option :bucket, {
+    type: :string,
+    desc: 'S3 bucket name',
+    required: true,
+  }
+  method_option :level, {
+    type: :string,
+    desc: 'Debug level, "debug", "info", "warn", "error"',
+    default: 'error',
+  }
+  def backup_s3()
+    # open jacket
+    jck = _open_jacket
+    return if !jck
+
+    # read in JSON config
+    json = File.read(options[:key])
+    creds = JSON.parse(json)
+    opts = {
+      region: creds['aws_region'],
+      access_key_id: creds['aws_id'],
+      secret_access_key: creds['aws_key'],
+    }
+    log = Logger.new(STDOUT)
+    case options[:level]
+      when 'debug'
+        log.level = Logger::DEBUG
+      when 'info'
+        log.level = Logger::INFO
+      when 'warn'
+        log.level = Logger::WARN
+      else
+        log.level = Logger::ERROR
+    end
+
+    puts 'id: %s' % creds['aws_id']
+    puts 'secret: %s' % creds['aws_key']
+    puts 'bucket: %s' % options[:bucket]
+    
+    # client
+    s3 = ::Aws::S3::Client.new(opts)
+    sto = ::Sgfa::StoreS3.new
+    sto.open(s3, options[:bucket])
+    
+    # backup
+    jck.backup(sto, log: log)
+    jck.close
+
+  end # def backup_s3()
 
 
   private
