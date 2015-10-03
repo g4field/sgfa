@@ -643,7 +643,7 @@ class Binder < Base
     if tl.empty?
       tags << "none\n"
     else
-      tl.each do |tag|
+      tl.sort.each do |tag|
         tags << _link_tag(env, tag, _escape_html(tag)) + "<br>\n"
       end
     end
@@ -970,14 +970,15 @@ class Binder < Base
 
     tags = ''
     cnt = 0
-    ent.tags.each do |tag|
+    ent.tags.sort.each do |tag|
       tags << EditTagOld % [cnt, _escape_html(tag)]
       cnt += 1
     end
-    prefix.each do |pre, lst|
+    prefix.keys.sort.each do |pre|
+      lst = prefix[pre]
       px = _escape_html(pre)
       opts = ''
-      lst.each do |post|
+      lst.sort.each do |post|
         ex = _escape_html(post)
         opts << EditTagOpt % [px, ex, ex]
       end
