@@ -880,58 +880,148 @@ class Binder < Base
 
 
   EditForm = 
-    "<form class='edit' method='post' action='%s/%s' " +
-    "enctype='multipart/form-data'>\n" +
-    "<input name='entry' type='hidden' value='%d'>\n" +
-    "<input name='revision' type='hidden' value='%d'>\n" +
+    "<form class='edit' method='post' action='%s/%s' \
+enctype='multipart/form-data'>
+<div class='edit'>
+<fieldset>
+<legend>Basic Info</legend>
+<label for='title'>Title:</label>
+<input class='title' name='title' type='text' value='%s'><br>
+<label for='time'>Time:</label>
+<input name='time' type='text' value='%s'><br>
+<label for='body'>Body:</label>
+<textarea class='body' name='body'>%s</textarea>
+</fieldset>
+<fieldset>
+<legend>Attachments</legend>
+<table>
+<tr><th>Name</th><th>Upload/Replace</th><th></th></tr>
+%s</table>
+</fieldset>
+<fieldset>
+<legend>Tags</legend>
+<table>
+%s</table>
+</fieldset>
+<input name='entry' type='hidden' value='%d'>
+<input name='revision' type='hidden' value='%d'>
+<input name='attcnt' id='attcnt' type='hidden' value='%d'>
+<input name='tagcnt' id='tagcnt' type='hidden' value='%d'>
+<input type='submit' name='save' value='Save Changes'>
+</div>
+</form>
+<script>
+var addAttach = (function(){
+  var count = %d;
+  return function(elmt){
+    count = count + 1;
+    var row = document.createElement('tr');
 
-    "<div class='edit'>\n" +
+    var col1 = document.createElement('td');
+    var inpt = document.createElement('input');
+    inpt.setAttribute('type', 'text');
+    inpt.setAttribute('name', 'attname' + count);
+    col1.appendChild(inpt);
+    inpt = document.createElement('input');
+    inpt.setAttribute('type', 'hidden');
+    inpt.setAttribute('name', 'attnumb' + count);
+    inpt.setAttribute('value', '0');
+    col1.appendChild(inpt);
+    row.appendChild(col1);
 
-    "<fieldset><legend>Basic Info</legend>\n" +
+    var col2 = document.createElement('td');
+    inpt = document.createElement('input');
+    inpt.setAttribute('type', 'file');
+    inpt.setAttribute('name', 'attfile' + count);
+    col2.appendChild(inpt);
+    row.appendChild(col2);
 
-    "<label for='title'>Title:</label>" +
-    "<input class='title' name='title' type='text' value='%s'><br>\n" +
+    var col3 = document.createElement('td');
+    col3.appendChild(elmt.cloneNode(true));
+    row.appendChild(col3);
 
-    "<label for='time'>Time:</label>" +
-    "<input name='time' type='text' value='%s'><br>\n" +
+    var pcol = elmt.parentNode;
+    pcol.removeChild(elmt);
+    var prow = pcol.parentNode;
+    var ptab = prow.parentNode;
+    ptab.appendChild(row);
 
-    "<label for='body'>Body:</label>" +
-    "<textarea class='body' name='body'>%s</textarea>\n" +
+    var acnt = document.getElementById('attcnt');
+    acnt.setAttribute('value', count + 1);
+  }
+})();
+var addTag = (function(){
+  var count = %d;
+  return function(elmt){
+    count = count + 1;
+    var row = document.createElement('tr');
 
-    "</fieldset>\n" +
-    "<fieldset><legend>Attachments</legend>\n%s</fieldset>\n" +
-    "<fieldset><legend>Tags</legend>\n%s</fieldset>\n" +
+    var col1 = document.createElement('td');
+    var pcol = elmt.parentNode;
+    var prev = pcol.previousElementSibling.lastChild;
+    var ptyp = prev.nodeName;
+    if( ptyp == 'SELECT' ){
+      var valu = prev.options[prev.selectedIndex].getAttribute('value');
+    } else {
+      var valu = '';
+    }
+    var inpt = document.createElement('input');
+    inpt.setAttribute('name', 'tag' + count);
+    inpt.setAttribute('type', 'text');
+    inpt.setAttribute('value', valu);
+    col1.appendChild(inpt);
+    row.appendChild(col1);
 
-    "<input type='submit' name='save' value='Save Changes'>\n" +
-    "</div></form>\n"
+    var col2 = document.createElement('td');
+    var addb = document.getElementById('add_tag');
+    addb.parentNode.removeChild(addb);
+    col2.appendChild(addb);
+    row.appendChild(col2);
 
-  EditFilePre = 
-    "<table class='edit_file'>\n" +
-    "<tr><th>Name</th><th>Upload/Replace</th></tr>\n"
+    var prow = pcol.parentNode;
+    var ptab = prow.parentNode;
+    ptab.appendChild(row);
 
-  EditFileEach =
-    "<tr><td><input name='attname%d' type='text' value='%s'>" +
-    "<input name='attnumb%d' type='hidden' value='%d'></td>" +
-    "<td><input name='attfile%d' type='file'></td></tr>\n"
+    var tcnt = document.getElementById('tagcnt');
+    tcnt.setAttribute('value', count + 1);
+  }
+})();
+</script>"
 
-  EditFileCnt =
-    "</table>\n<input name='attcnt' type='hidden' value='%d'>\n"
 
-  EditTagOld =
-    "<input name='tag%d' type='text' value='%s'><br>\n"
+  EditAttach =
+"<tr><td><input name='attname%d' type='text' value='%s'>\
+<input name='attnumb%d' type='hidden' value='%d'>\
+</td><td><input name='attfile%d' type='file'></td><td>%s</td></tr>\n"
 
-  EditTagNew =
-    "<input name='tag%d' type='text'><br>\n"
+
+  EditAttachButton =
+"<button type='button' class='add_row' id='add_attach' \
+onclick='addAttach(this)'>+</button>"
+
+
+  EditTag =
+"<tr><td><input name='tag%d' type='text' value='%s'></td><td>%s</td></tr>\n"
+
 
   EditTagSel =
-    "%s: <select name='tag%d'>" +
-    "<option value='' selected></option>%s</select><br>\n"
+"<tr>
+<td>%s: <select name='pre%d'>
+<option value='%s: ' selected></option>
+%s</select></td>
+<td><button type='button' class='add_row' onclick='addTag(this)'>+\
+</button></td>
+</tr>\n"
+
+  
+  EditTagButton =
+"<button type='button' class='add_row' id='add_tag' onclick='addTag(this)'>+\
+</button>"
+
 
   EditTagOpt =
-    "<option value='%s: %s'>%s</option>"
+"<option value='%s: %s'>%s</option>\n"
 
-  EditTagCnt = 
-    "<input name='tagcnt' type='hidden' value='%d'>\n"
 
   #####################################
   # Get edit form
@@ -940,6 +1030,7 @@ class Binder < Base
 
     tr = _trans(env)
 
+    # get entry
     if path.empty?
       enum = 0
       rnum = 0
@@ -954,6 +1045,7 @@ class Binder < Base
       rnum = ent.revision
     end
 
+    # get tag list and prefixes
     lst = env['sgfa.binder'].read_list(tr)
     prefix = {}
     lst.each do |tag|
@@ -968,12 +1060,18 @@ class Binder < Base
       end
     end
 
+    # attachments
+    atts = ''
+    acnt = 0
+    ent.attachments.each do |anum, hnum, name|
+      atts << EditAttach % [acnt, _escape_html(name), acnt, anum, acnt, '']
+      acnt += 1
+    end
+    atts << EditAttach % [acnt, '', acnt, 0, acnt, EditAttachButton]
+
+    # tags
     tags = ''
     cnt = 0
-    ent.tags.sort.each do |tag|
-      tags << EditTagOld % [cnt, _escape_html(tag)]
-      cnt += 1
-    end
     prefix.keys.sort.each do |pre|
       lst = prefix[pre]
       px = _escape_html(pre)
@@ -982,38 +1080,29 @@ class Binder < Base
         ex = _escape_html(post)
         opts << EditTagOpt % [px, ex, ex]
       end
-      tags << EditTagSel % [px, cnt, opts]
+      tags << EditTagSel % [px, cnt, px, opts]
       cnt += 1
     end
-    5.times do |tg|
-      tags << EditTagNew % cnt
-      cnt += 1
+    tcnt = 0
+    ent.tags.sort.each do |tag|
+      tags << EditTag % [tcnt, _escape_html(tag), '']
+      tcnt += 1
     end
-    tags << EditTagCnt % cnt
+    tags << EditTag % [tcnt, '', EditTagButton]
 
-    atts = "Attachments go here\n"
-    atts = EditFilePre.dup
-    cnt = 0
-    ent.attachments.each do |anum, hnum, name|
-      atts << EditFileEach % [cnt, _escape_html(name), cnt, anum, cnt]
-      cnt += 1
-    end
-    5.times do |ix|
-      atts << EditFileEach % [cnt, '', cnt, 0, cnt]
-      cnt += 1
-    end
-    atts << EditFileCnt % cnt
-
+    # the page
     html = EditForm % [
-      env['SCRIPT_NAME'], env['sgfa.jacket.url'], enum, rnum, 
+      env['SCRIPT_NAME'], env['sgfa.jacket.url'],
       _escape_html(ent.title), ent.time.localtime.strftime('%F %T %z'),
-      _escape_html(ent.body), atts, tags,
+      _escape_html(ent.body), atts, tags, enum, rnum, acnt+1, tcnt+1,
+      acnt, tcnt
     ]
     
     env['sgfa.status'] = :ok
     env['sgfa.html'] = html
   end # def _get_edit
- 
+
+
   JacketPost = [
     'entry',
     'revision',
@@ -1089,9 +1178,15 @@ class Binder < Base
         
       # old file
       else
-        ent.rename(anum, name) if name != ''
         ent.replace(anum, ftmp) if ftmp
-      end     
+        if name != ''
+          ent.rename(anum, name)
+        elsif ftmp
+          ent.rename(anum, file[:filename])
+        else
+          ent.delete(anum)
+        end
+      end
 
     end
 
