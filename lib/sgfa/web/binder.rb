@@ -882,7 +882,6 @@ class Binder < Base
   EditForm = 
     "<form class='edit' method='post' action='%s/%s' \
 enctype='multipart/form-data'>
-<div class='edit'>
 <fieldset>
 <legend>Basic Info</legend>
 <label for='title'>Title:</label>
@@ -908,7 +907,6 @@ enctype='multipart/form-data'>
 <input name='attcnt' id='attcnt' type='hidden' value='%d'>
 <input name='tagcnt' id='tagcnt' type='hidden' value='%d'>
 <input type='submit' name='save' value='Save Changes'>
-</div>
 </form>
 <script>
 var addAttach = (function(){
@@ -990,7 +988,7 @@ var addTag = (function(){
 
 
   EditAttach =
-"<tr><td><input name='attname%d' type='text' value='%s'>\
+"<tr><td><input name='attname%d' class='attname' type='text' value='%s'>\
 <input name='attnumb%d' type='hidden' value='%d'>\
 </td><td><input name='attfile%d' type='file'></td><td>%s</td></tr>\n"
 
@@ -1001,7 +999,8 @@ onclick='addAttach(this)'>+</button>"
 
 
   EditTag =
-"<tr><td><input name='tag%d' type='text' value='%s'></td><td>%s</td></tr>\n"
+"<tr><td><input name='tag%d' class='tag' type='text' value='%s'></td>\
+<td>%s</td></tr>\n"
 
 
   EditTagSel =

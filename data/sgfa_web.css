@@ -119,7 +119,17 @@ div#sgfa_web table.list td.hash {
 }
 
 
-/* edit tables */
+/* edit */
+div#sgfa_web form.edit input {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+div#sgfa_web form.edit textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
 div#sgfa_web form.edit fieldset {
   width: 98%;
   margin: auto;
@@ -130,40 +140,12 @@ div#sgfa_web form.edit fieldset legend {
   font-weight: bold;
 }
 
-div#sgfa_web form.edit p {
-  clear: both;
-  padding: 3px;
-}
-
 div#sgfa_web form.edit label {
   float: left;
   width: 8em;
   text-align: right;
 }
 
-/* edit tag table */
-div#sgfa_web table.edit_tag th {
-  text-align: center;
-  text-decoration: underline;
-}
-
-div#sgfa_web table.edit_tag tr {
-  border: thick solid red;
-}
-
-
-/* edit file table */
-div#sgfa_web table.edit_file th {
-  text-align: center;
-  text-decoration: underline;
-}
-
-div#sgfa_web table.edit_file td.fname {
-  min-width: 10em;
-}
-
-
-/* edit form */
 div#sgfa_web form.edit input[type=submit] {
   border: 1px solid grey;
   border-radius: 5px;
@@ -172,21 +154,29 @@ div#sgfa_web form.edit input[type=submit] {
 }
 
 div#sgfa_web form.edit textarea {
-  font-family: inherit;
-  font-size: inherit;
   width: 50em;
   height: 15em;
 }
 
 div#sgfa_web form.edit input.title {
-  font-family: inherit;
-  font-size: inherit;
   width: 50em;
 }
 
-div#sgfa_web form.edit input.tag {
-  width: 15em;
+div#sgfa_web form.edit input.attname {
+  width: 30em;
 }
+
+div#sgfa_web form.edit input.tag {
+  width: 30em;
+}
+
+div#sgfa_web form.edit button.add_row {
+  border: 1px solid grey;
+  border-radius: 5px;
+  padding: 2px;
+  background: radial-gradient(rgb(245, 245, 245), rgb(200, 200, 200));
+}
+
 
 
 /* entry */
