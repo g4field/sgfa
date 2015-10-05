@@ -300,7 +300,7 @@ class Binder < Base
 
   JacketsForm =
     "\n<hr>\n<form class='edit' method='post' action='%s' " +
-    "enctype='multipart/form-data'>\n" +
+    "enctype='multipart/form-data' accept-charset='utf-8'>\n" +
     "<fieldset><legend>Create or Edit Jacket</legend>\n" +
     "<label for='jacket'>Name:</label>" +
     "<input class='jacket' name='jacket' type='text'><br>\n" +
@@ -389,7 +389,7 @@ class Binder < Base
 
   UsersForm = 
     "\n<hr>\n<form class='edit' method='post' action='%s' " +
-    "enctype='multipart/form-data'>\n" +
+    "enctype='multipart/form-data' accept-charset='utf-8'>\n" +
     "<fieldset><legend>Set User or Group Permissions</legend>\n" +
     "<label for='user'>Name:</label>" +
     "<input class='user' name='user' type='text'><br>\n" +
@@ -881,7 +881,7 @@ class Binder < Base
 
   EditForm = 
     "<form class='edit' method='post' action='%s/%s' \
-enctype='multipart/form-data'>
+enctype='multipart/form-data' accept-charset='utf-8'>
 <fieldset>
 <legend>Basic Info</legend>
 <label for='title'>Title:</label>
@@ -1118,6 +1118,13 @@ onclick='addAttach(this)'>+</button>"
     rck = Rack::Request.new(env)
     params = rck.POST
 
+    # stupid kludge to fix bad standards inplementation.
+    # apparently browsers don't set the charset correctly so rack defaults
+    # to ASCII-8BIT, and then everything dies when there's actually UTF-8
+    # present.  Since modern browsers actually send UTF-8 when we ask for
+    # it, just force it to UTF-8 and hope for the best.
+    params.each{ |key, val| val.force_encoding('utf-8') if val.is_a?(String) }
+
     # validate fields present
     JacketPost.each do |fn|
       next if params[fn]
@@ -1215,6 +1222,13 @@ onclick='addAttach(this)'>+</button>"
 
     rck = Rack::Request.new(env)
     params = rck.POST
+
+    # stupid kludge to fix bad standards inplementation.
+    # apparently browsers don't set the charset correctly so rack defaults
+    # to ASCII-8BIT, and then everything dies when there's actually UTF-8
+    # present.  Since modern browsers actually send UTF-8 when we ask for
+    # it, just force it to UTF-8 and hope for the best.
+    params.each{ |key, val| val.force_encoding('utf-8') if val.is_a?(String) }
 
     tr = _trans(env)
     tr[:title] = 'Test title'
