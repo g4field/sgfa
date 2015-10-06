@@ -919,6 +919,7 @@ var addAttach = (function(){
     var inpt = document.createElement('input');
     inpt.setAttribute('type', 'text');
     inpt.setAttribute('name', 'attname' + count);
+    inpt.setAttribute('class', 'attname');
     col1.appendChild(inpt);
     inpt = document.createElement('input');
     inpt.setAttribute('type', 'hidden');
@@ -965,6 +966,7 @@ var addTag = (function(){
     }
     var inpt = document.createElement('input');
     inpt.setAttribute('name', 'tag' + count);
+    inpt.setAttribute('class', 'tag');
     inpt.setAttribute('type', 'text');
     inpt.setAttribute('value', valu);
     col1.appendChild(inpt);
