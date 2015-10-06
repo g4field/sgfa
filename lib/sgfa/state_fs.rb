@@ -190,6 +190,15 @@ class StateFs
   # @raise [Error::Sanity] if state not open
   # @raise [Error::Corrupt] if tag list is missing
   def list
+    tagh, max = _list
+    return tagh.keys
+  end # def list
+
+
+  #####################################
+  # Read raw tag list
+  # return [Array] \[max_tagn, tag_hash\]
+  def _list
     raise Error::Sanity, 'State not open' if !@path
 
     ftn = File.join(@path, TagList)
@@ -198,8 +207,20 @@ class StateFs
     rescue Errno::ENOENT
       raise Error::Corrupt, 'Unable to read tag list'
     end
-    return txt.lines.map{|tg| tg.chomp }
-  end # def list
+
+    tagh = {}
+    max = 0
+    txt.lines.each do |ln|
+      ma = /^(\d{9}) (.*)$/.match(ln)
+      raise Error::Corrupt, 'Tag list format incorrect' if !ma
+      num = ma[1].to_i
+      tagh[ma[2]] = num
+      max = num if num > max
+    end
+
+    return tagh, max
+  end # _list
+  private :_list
 
 
   #####################################
@@ -216,11 +237,13 @@ class StateFs
   def tag(name, offs, max)
     raise Error::Sanity, 'State not open' if !@path
 
-    fn = File.join(@path, name)
+    tagh, max = _list
+    raise Error::NonExistent, 'Tag does not exist' if !tagh[name]
+    fn = File.join(@path, tagh[name].to_s)
     begin
       fi = File.open(fn, 'rb')
     rescue Errno::ENOENT
-      raise Error::NonExistent, 'Tag does not exist'
+      raise Error::Corrupt, 'Tag file missing'
     end
 
     ents = []
@@ -257,8 +280,8 @@ class StateFs
 
     # read list of tags
     changed = false
-    thash = {}
-    self.list.each{|tag| thash[tag] = true }
+    thash, max = _list
+#    self.list.each{|tag| thash[tag] = true }
 
     cng.each do |tag, hc|
       cnt = 0
@@ -267,14 +290,15 @@ class StateFs
       se = hc.to_a.select{|en, ti| ti }.sort{|aa, bb| aa[1] <=> bb[1] }
 
       # files
-      fn = File.join(@path, tag)
       if thash[tag]
+        fn = File.join(@path, thash[tag].to_s)
         begin
           oldf = File.open(fn, 'rb')
         rescue Errno::ENOENT
           raise Error::Corrupt, 'Existing tag is missing'
         end
       else
+        fn = File.join(@path, (max + 1).to_s)
         oldf = nil
       end
       newf = Tempfile.new('state', @path, :encoding => 'ASCII-8BIT')
@@ -319,7 +343,8 @@ class StateFs
       else
         FileUtils.ln(newf.path, fn, :force => true)
         if !oldf
-          thash[tag] = true
+          max += 1
+          thash[tag] = max
           changed = true
         end
       end
@@ -330,7 +355,7 @@ class StateFs
     if changed
       fnl = File.join(@path, TagList)
       File.open(fnl, 'w', :encoding => 'utf-8') do |fi|
-        thash.each_key{|tag| fi.puts tag }
+        thash.each{|tag, num| fi.puts '%09d %s' % [num, tag] }
       end
     end
 
