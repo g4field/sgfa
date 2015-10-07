@@ -418,6 +418,8 @@ class Jacket
   # @option opts [Logger] :log The logger to use.  Defaults to STDERR log
   # @return [Boolean] true if valid history chain
   def check(opts={})
+    raise Error::Sanity, 'Jacket is not open' if !@id_hash
+
     max = opts[:max_history] || 1000000000
     min = opts[:min_history] || 1
     stop = opts[:miss_history] || 0
@@ -549,6 +551,310 @@ class Jacket
     end
 
   end # def check()
+
+
+  #####################################
+  # Backup to an alternate store
+  #
+  # @param bsto [Store] Backup store
+  # @param opts [Hash] Options
+  # @option opts [Fixnum] :max_history Last history to backup.  Defaults
+  #   to the current maximum history.
+  # @option opts [Fixnum] :min_history First history to backup.  Defaults
+  #   to 1.
+  # @option opts [Boolean] :skip_history Do not push history items
+  # @option opts [Boolean] :skip_entry Do not push entry items
+  # @option opts [Boolean] :skip_attach Do not push attachments
+  # @option opts [Boolean] :always Do not stat item, always push
+  # @option opts [Logger] :log The log.  Defaults to STDERR at warn level.
+  def backup(bsto, opts={})
+    raise Error::Sanity, 'Jacket is not open' if !@id_hash
+
+    max = opts[:max_history] || @lock.do_sh{ @state.get(0) }
+    min = opts[:min_history] || 1
+    do_h = !opts[:skip_history]
+    do_e = !opts[:skip_entry]
+    do_a = !opts[:skip_attach]
+    stat = !opts[:always]
+    if opts[:log]
+      log = opts[:log]
+    else
+      log = Logger.new(STDERR)
+      log.level = Logger::WARN
+    end
+    hst = History.new
+
+    min.upto(max) do |hnum|
+
+      # history items
+      type, item = item_history(hnum)
+      blob = @store.read(type, item)
+      if !blob
+        log.error('Backup history item missing %d' % hnum)
+        next
+      end
+      begin
+        hst.canonical = blob.read
+        if stat
+          size = bsto.size(type, item)
+          if size
+            log.info('Backup history item already exists %d' % hnum)
+            next
+          end
+        end
+        if do_h
+          temp = bsto.temp
+          blob.rewind
+          IO.copy_stream(blob, temp)
+          bsto.write(type, item, temp)
+          log.info('Backup push history item %d' % hnum)
+        end
+      ensure 
+        blob.close
+      end
+
+      # entries
+      if do_e
+        hst.entries.each do |enum, rnum, hash|
+          type, item = item_entry(enum, rnum)
+          blob = @store.read(type, item)
+          if !blob
+            log.info('Backup entry missing %d-%d' % [enum, rnum])
+            next
+          end
+          begin
+            temp = bsto.temp
+            IO.copy_stream(blob, temp)
+            bsto.write(type, item, temp)
+            log.info('Backup push entry %d-%d' % [enum, rnum])
+          ensure
+            blob.close
+          end
+        end
+      end
+
+      # attachments
+      if do_a
+        hst.attachments.each do |enum, anum, hash|
+          type, item = item_attach(enum, anum, hnum)
+          blob = @store.read(type, item)
+          if !blob
+            log.info('Backup attachment missing %d-%d-%d' % [enum, anum, hnum])
+            next
+          end
+          begin
+            temp = bsto.temp
+            IO.copy_stream(blob, temp)
+            bsto.write(type, item, temp)
+            log.info('Backup push attachment %d-%d-%d' % [enum, anum, hnum])
+          ensure
+            blob.close
+          end
+        end
+      end
+
+    end
+
+  end # def backup()
+
+
+  #####################################
+  # Backup restore from an alternate store
+  #
+  # @param bsto [Store] The backup store
+  # @param opts [Hash] Options
+  # @option opts [Fixnum] :max_history Last history to restore.  Defaults to
+  #   everything until a history item is not found.
+  # @option opts [Fixnum] :min_history First history to restore.  Defaults to
+  #   current maximum history plus one.
+  # @option opts [Boolean] :skip_entry Do not pull entry items.
+  # @option opts [Boolean] :skip_attach Do not pull attachments.
+  # @option opts [Boolean] :always Do not stat local item, always pull.
+  # @option opts [Logger] :log The log.  Defaults to STDERR at warn level.
+  #
+  # @todo Do locking.  Really restore is not going to occur with 
+  #
+  def restore(bsto, opts={})
+    raise Error::Sanity, 'Jacket is not open' if !@id_hash
+
+    max = opts[:max_history] || 1000000000
+    min = opts[:min_history] || @lock.do_sh{ @state.get(0) } + 1
+    do_e = !opts[:skip_entry]
+    do_a = !opts[:skip_attach]
+    stat = !opts[:always]
+    if opts[:log]
+      log = opts[:log]
+    else
+      log = Logger.new(STDERR)
+      log.level = Logger::WARN
+    end
+    hst = History.new
+
+    miss = 0
+    hnum = min -1
+    while (hnum += 1) <= max
+
+      # history item
+      type, item = item_history(hnum)
+      if stat
+        size = @store.size(type, item)
+        if size
+          log.info('Restore history item already exists %d' % hnum)
+          next
+        end
+      end
+      blob = bsto.read(type, item)
+      if !blob
+        if max == 1000000000
+          break
+        else
+          log.error('Restore history item missing %d' % hnum)
+          next
+        end
+      end
+      begin
+        hst.canonical = blob.read
+        blob.rewind
+        temp = @store.temp
+        IO.copy_stream(blob, temp)
+        @store.write(type, item, temp)
+        log.info('Restore history item %d' % hnum)
+      ensure
+        blob.close
+      end
+
+      # entries
+      if do_e
+        hst.entries.each do |enum, rnum, hash|
+          type, item = item_entry(enum, rnum)
+          blob = bsto.read(type, item)
+          if !blob
+            log.info('Restore entry missing %d-%d' % [enum, rnum])
+            next
+          end
+          begin
+            temp = @store.temp
+            IO.copy_stream(blob, temp)
+            @store.write(type, item, temp)
+            log.info('Restore entry %d-%d' % [enum, rnum])
+          ensure
+            blob.close
+          end
+        end
+      end
+
+      # attachments
+      if do_a
+        hst.attachments.each do |enum, anum, hash|
+          type, item = item_attach(enum, anum, hnum)
+          blob = bsto.read(type, item)
+          if !blob
+            log.info('Restore attach missing %d-%d-%d' % [enum, anum, hnum])
+            next
+          end
+          begin
+            temp = @store.temp
+            IO.copy_stream(blob, temp)
+            @store.write(type, item, temp)
+            log.info('Restore attach %d-%d-%d' % [enum, anum, hnum])
+          ensure
+            blob.close
+          end
+        end
+      end
+
+    end
+
+    # update state
+    update(min, hnum-1)
+
+  end # def restore()
+
+
+  # Number of entries to process before doing a tag state update
+  UpdateChunk = 250
+
+  TagAll = '_all'
+
+  #####################################
+  # Update state
+  #
+  # @param [Fixnum] min History to start the update
+  # @param [Fixnum] max History to stop the update
+  #
+  def update(min, max)
+    raise Error::Sanity, 'Jacket is not open' if !@id_hash
+
+    # blow away state entirely
+    @state.reset if min <= 1
+
+    tags = {}
+    current = {}
+    count = 0
+    hst = History.new
+    entry_max = nil
+    max.downto(min) do |hnum|
+
+      # history
+      type, item = item_history(hnum)
+      fi = @store.read(type, item)
+      raise Error::Corrupt, 'Jacket history does not exist %d' % hnum if !fi
+      begin
+        hst.canonical = fi.read
+      ensure
+        fi.close
+      end
+      entry_max = hst.entry_max if !entry_max
+
+      # entries
+      hst.entries.each do |enum, rnum, hash|
+        next if current[enum]
+        current[enum] = true
+        count += 1
+
+        # get new entry
+        type, item = item_entry(enum, rnum)
+        ent = _read_entry(enum, rnum)
+        if !ent
+          raise Error::Corrupt, 'Jacket current entry not present'
+        end
+
+        # update from old entry
+        if min > 1 && rnum >= 2
+          oldr = @state.get(enum)
+          olde = _read_entry(enum, oldr)
+          if !olde
+            raise Error::Corrupt, 'Jacket current entry not present'
+          end
+          tdel = olde.tags - ent.tags
+          tdel.each do |tag|
+            tags[tag] ||= {}
+            tags[tag][enum] = nil
+          end
+
+        end
+        @state.set(enum, rnum)
+
+        # update tags
+        tags[TagAll] ||= {}
+        tags[TagAll][enum] = ent.time_str
+        ent.tags.each do |tag|
+          tags[tag] ||= {}
+          tags[tag][enum] = ent.time_str
+        end
+      end
+
+      # tag state update
+      if count >= UpdateChunk || hnum == min
+        @state.update(tags)
+        tags = {}
+        count = 0
+      end
+    end
+    
+    @state.set(0, entry_max)
+
+  end # def update()
 
 
 end # class Jacket
