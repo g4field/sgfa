@@ -70,7 +70,7 @@ class StoreS3
     key = _key(type, item)
     fi = temp
     fi.set_encoding(Encoding::ASCII_8BIT)
-    @s3.read_object( bucket: @bck, key: key, response_target: fi )
+    @s3.get_object( bucket: @bck, key: key, response_target: fi )
     fi.rewind
     return fi
   rescue Aws::S3::Errors::NoSuchKey

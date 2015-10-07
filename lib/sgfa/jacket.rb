@@ -765,9 +765,96 @@ class Jacket
 
     end
 
-    # FIXME: Set state
+    # update state
+    update(min, hnum-1)
 
   end # def restore()
+
+
+  # Number of entries to process before doing a tag state update
+  UpdateChunk = 250
+
+  TagAll = '_all'
+
+  #####################################
+  # Update state
+  #
+  # @param [Fixnum] min History to start the update
+  # @param [Fixnum] max History to stop the update
+  #
+  def update(min, max)
+    raise Error::Sanity, 'Jacket is not open' if !@id_hash
+
+    # blow away state entirely
+    @state.reset if min <= 1
+
+    tags = {}
+    current = {}
+    count = 0
+    hst = History.new
+    entry_max = nil
+    max.downto(min) do |hnum|
+
+      # history
+      type, item = item_history(hnum)
+      fi = @store.read(type, item)
+      raise Error::Corrupt, 'Jacket history does not exist %d' % hnum if !fi
+      begin
+        hst.canonical = fi.read
+      ensure
+        fi.close
+      end
+      entry_max = hst.entry_max if !entry_max
+
+      # entries
+      hst.entries.each do |enum, rnum, hash|
+        next if current[enum]
+        current[enum] = true
+        count += 1
+
+        # get new entry
+        type, item = item_entry(enum, rnum)
+        ent = _read_entry(enum, rnum)
+        if !ent
+          raise Error::Corrupt, 'Jacket current entry not present'
+        end
+
+        # update from old entry
+        if min > 1 && rnum >= 2
+          oldr = @state.get(enum)
+          olde = _read_entry(enum, oldr)
+          if !olde
+            raise Error::Corrupt, 'Jacket current entry not present'
+          end
+          tdel = olde.tags - ent.tags
+          tdel.each do |tag|
+            tags[tag] ||= {}
+            tags[tag][enum] = nil
+          end
+
+        end
+        @state.set(enum, rnum)
+
+        # update tags
+        tags[TagAll] ||= {}
+        tags[TagAll][enum] = ent.time_str
+        ent.tags.each do |tag|
+          tags[tag] ||= {}
+          tags[tag][enum] = ent.time_str
+        end
+      end
+
+      # tag state update
+      if count >= UpdateChunk || hnum == min
+        @state.update(tags)
+        tags = {}
+        count = 0
+      end
+    end
+    
+    @state.set(0, entry_max)
+
+  end # def update()
 
 
 end # class Jacket
