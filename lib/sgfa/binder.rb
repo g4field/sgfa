@@ -398,7 +398,169 @@ class Binder
   end # def write()
 
 
+  #########################################################
+  # @!group Backup
+
+
+  #####################################
+  # Push to a backup store
+  #
+  # @param bsto [Store] Backup store
+  # @param prev [Hash] Jacket id_hash to previously pushed max history
+  # @return [Hash] Jacket id_hash to max history backed up
+  def backup_push(bsto, prev)
+
+    stat = {}
+    
+    # control jacket push
+    jcks = nil
+    _shared do
+      ctl = _jacket_open(0)
+      begin
+        min = prev[@id_hash] || 1
+        stat[@id_hash] = ctl.backup(bsto, min_history: min)
+      ensure
+        ctl.close
+      end
+      jcks = @jackets.values
+    end
+
+    # all other jackets
+    jcks.each do |info|
+      jck = _jacket_open(info[:num])
+      begin
+        id = info[:id_hash]
+        min = prev[id] || 1
+        stat[id] = jck.backup(bsto, min_history: min)
+      ensure
+        jck.close
+      end
+    end
+
+    return stat
+  end # def backup_push()
+
+
+  #####################################
+  # Pull from backup store
+  def backup_pull(bsto)
+    
+    @lock.do_ex do
+
+      # control jacket
+      ctl = _jacket_open(0)
+      begin
+        ctl.restore(bsto)
+        _update(ctl)
+      ensure
+        ctl.close()
+      end
+      _cache_write()
+
+      # all other jackets
+      @jackets.values.each do |info|
+        begin
+          jck = _jacket_open(info[:num])
+        rescue Error::NonExistent
+          _jacket_create_raw(info)
+          jck = _jacket_open(info[:num])
+        end
+        begin
+          jck.restore(bsto)
+        ensure
+          jck.close
+        end
+      end
+
+    end 
+
+  end # def backup_pull()
+
+
   private
+
+
+  #####################################
+  # Update cache
+  def _update(ctl)
+
+    values = {}
+    users = {}
+    jackets = {}
+
+    ctl.read_list.each do |tag|
+
+      # values
+      if tag == 'values'
+
+        # process all values entries
+        offs = 0
+        while true
+          size, ary = ctl.read_tag(tag, offs, 2)
+          break if ary.empty?
+          ary.each do |ent|
+            info = _get_json(ent)
+            info.each do |val, sta|
+              next if values.has_key?(val)
+              values[val] = sta
+            end
+          end
+          offs += 2
+        end
+
+        # clear unset values
+        values.delete_if{ |val, sta| !sta.is_a?(String) }
+
+      # jacket
+      elsif /^jacket:/.match(tag)
+        size, ary = ctl.read_tag(tag, 0, 1)
+        info = _get_json(ary.first)
+        jackets[info['name']] = {
+          num: info['num'],
+          name: info['name'],
+          id_hash: info['id_hash'],
+          id_text: info['id_text'],
+          title: info['title'],
+          perms: info['perms'],
+        }
+
+      # user
+      elsif /^user:/.match(tag)
+        size, ary = ctl.read_tag(tag, 0, 1)
+        info = _get_json(ary.first)
+        name = info['name']
+        perms = info['perms']
+        users[name] = perms
+
+      end
+    end
+
+    @users = users
+    @values = values
+    @jackets = jackets
+
+  end # def _update()
+
+
+  #####################################
+  # Get json from a body
+  def _get_json(ent)
+    lines = ent.body.lines
+    st = lines.index{|li| li[0] == '{' || li[0] == '[' }
+    if !st || (lines[-1][0] != '}' && lines[-1][0] != ']')
+      puts ent.body.inspect
+      raise Error::Corrupt, 'Control jacket entry does not contain JSON'
+    end 
+    json = lines[st..-1].join
+
+    info = nil
+    begin
+      info = JSON.parse(json)
+    rescue
+      raise Error::Corrupt, 'Control jacket entry JSON parse error'
+    end
+    return info
+  end # def _get_json()
 
 
   #####################################
