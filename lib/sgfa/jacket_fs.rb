@@ -31,14 +31,28 @@ class JacketFs < Jacket
   #
   # @param path [String] Path to create the jacket
   # @param id_text [String] Text ID of the jacket
+  # @raise [Error::Limits] if id_text exceeds allowed limits
+  # @raise [Error::Conflict] if path already exists
+  # @return [String] Hash ID of the jacket
+  def self.create(path, id_text)
+    id_hash = Digest::SHA256.new.update(id_text).hexdigest
+    JacketFs.create_raw(path, id_text, id_hash)
+  end # def self.create()
+  
+  
+  #####################################
+  # Create a jacket from backup
+  # 
+  # @param path (see create)
+  # @param id_text (see create)
+  # @param id_hash [String] Hash ID of the jacket
   # @return [String] Hash ID of the jacket
   # @raise [Error::Limits] if id_text exceeds allowed limits
   # @raise [Error::Conflict] if path already exists
-  def self.create(path, id_text)
+  # @note You probably want to use {create}, not this method
+  def self.create_raw(path, id_text, id_hash)
     Jacket.limits_id(id_text)
 
-    # info
-    id_hash = Digest::SHA256.new.update(id_text).hexdigest
     info = {
       'sgfa_jacket_ver' => 1,
       'id_hash' => id_hash,
@@ -60,7 +74,7 @@ class JacketFs < Jacket
     StoreFs.create(File.join(path, 'store'))
 
     return id_hash
-  end # def self.create()
+  end # def self.create_raw()
 
 
   #####################################

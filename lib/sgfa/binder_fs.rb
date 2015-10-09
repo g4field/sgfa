@@ -26,6 +26,51 @@ module Sgfa
 class BinderFs < Binder
 
   #####################################
+  # Create a raw binder
+  #
+  # @note You almost certainly want to use {#create} not this method
+  #
+  # @param path [String] Path to the binder
+  # @param id_text [String] The text ID
+  # @return [String] The hash ID
+  def create_raw(path, id_text)
+    
+    # create directory
+    begin
+      Dir.mkdir(path)
+    rescue Errno::EEXIST
+      raise Error::Conflict, 'Binder path already exists'
+    end
+
+    # create control binder
+    dn_ctrl = File.join(path, '0')
+    id_hash = JacketFs.create(dn_ctrl, id_text)
+
+    # write info
+    info = {
+      'sgfa_binder_ver' => 1,
+      'id_hash' => id_hash,
+      'id_text' => id_text,
+    }
+    json = JSON.pretty_generate(info) + "\n"
+    fn_info = File.join(path, 'sgfa_binder.json')
+    File.open(fn_info, 'w', :encoding => 'utf-8'){|fi| fi.write json }
+    
+    # create empty cache
+    @path = path
+    @id_hash = id_hash
+    @jackets = {}
+    @users = {}
+    @values = {}
+    _cache_write
+    @path = nil
+    @id_hash = nil
+
+    return id_hash    
+  end # def create_raw()
+
+
+  #####################################
   # Create a new binder
   #
   # @param path [String] Path to the binder
@@ -36,19 +81,11 @@ class BinderFs < Binder
     raise Error::Sanity, 'Binder already open' if @path
     Binder.limits_create(init)
 
-    # create directory
-    begin
-      Dir.mkdir(path)
-    rescue Errno::EEXIST
-      raise Error::Conflict, 'Binder path already exists'
-    end
-
-    # create control binder
-    dn_ctrl = File.join(path, '0')
-    id_hash = JacketFs.create(dn_ctrl, init[:id_text])
-    jck = JacketFs.new(dn_ctrl)
+    # create completely empty binder
+    id_hash = create_raw(path, init[:id_text])
 
     # do the common creation
+    jck = _open_jacket(0)
     @path = path
     @id_hash = id_hash
     @jackets = {}
@@ -60,16 +97,6 @@ class BinderFs < Binder
     @path = nil
     @id_hash = nil
 
-    # write info
-    info = {
-      'sgfa_binder_ver' => 1,
-      'id_hash' => id_hash,
-      'id_text' => init[:id_text],
-    }
-    json = JSON.pretty_generate(info) + "\n"
-    fn_info = File.join(path, 'sgfa_binder.json')
-    File.open(fn_info, 'w', :encoding => 'utf-8'){|fi| fi.write json }
-    
     return id_hash
   end # def create()
 
@@ -141,6 +168,14 @@ class BinderFs < Binder
     id_hash = JacketFs.create(jp, id_text)
     [id_text, id_hash]
   end # def _jacket_create()
+
+
+  #####################################
+  # Create a jacket from backup
+  def _jacket_create_raw(info)
+    jp = File.join(@path, info[:num].to_s)
+    JacketFs.create_raw(jp, info[:id_text], info[:id_hash])
+  end # def _jacket_create_raw()
 
 
   #####################################

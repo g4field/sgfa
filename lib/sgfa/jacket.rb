@@ -567,6 +567,7 @@ class Jacket
   # @option opts [Boolean] :skip_attach Do not push attachments
   # @option opts [Boolean] :always Do not stat item, always push
   # @option opts [Logger] :log The log.  Defaults to STDERR at warn level.
+  # @return [Fixnum] The last history backed up.
   def backup(bsto, opts={})
     raise Error::Sanity, 'Jacket is not open' if !@id_hash
 
@@ -655,6 +656,8 @@ class Jacket
 
     end
 
+    return max
+
   end # def backup()
 
 
@@ -672,7 +675,8 @@ class Jacket
   # @option opts [Boolean] :always Do not stat local item, always pull.
   # @option opts [Logger] :log The log.  Defaults to STDERR at warn level.
   #
-  # @todo Do locking.  Really restore is not going to occur with 
+  # @todo Do locking.  Really restore is not going to occur with other
+  #   processes accessing it, but...
   #
   def restore(bsto, opts={})
     raise Error::Sanity, 'Jacket is not open' if !@id_hash
