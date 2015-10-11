@@ -710,6 +710,7 @@ class Jacket
       blob = bsto.read(type, item)
       if !blob
         if max == 1000000000
+          log.debug('Restore finished at %d' % (hnum-1))
           break
         else
           log.error('Restore history item missing %d' % hnum)
@@ -778,7 +779,10 @@ class Jacket
   # Number of entries to process before doing a tag state update
   UpdateChunk = 250
 
+
+  # The tag which includes all entries
   TagAll = '_all'
+
 
   #####################################
   # Update state
@@ -796,7 +800,7 @@ class Jacket
     current = {}
     count = 0
     hst = History.new
-    entry_max = nil
+    entry_max = 0
     max.downto(min) do |hnum|
 
       # history
@@ -808,7 +812,7 @@ class Jacket
       ensure
         fi.close
       end
-      entry_max = hst.entry_max if !entry_max
+      entry_max = hst.entry_max if entry_max==0
 
       # entries
       hst.entries.each do |enum, rnum, hash|
