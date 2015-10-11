@@ -406,19 +406,28 @@ class Binder
   # Push to a backup store
   #
   # @param bsto [Store] Backup store
-  # @param prev [Hash] Jacket id_hash to previously pushed max history
+  # @param opts [Hash] Options
+  # @option opts [Hash] :log The log.  Defaults to STDERR at warn level.
+  # @option opts [Hash] :prev Jacket id_hash to previously pushed max history
   # @return [Hash] Jacket id_hash to max history backed up
-  def backup_push(bsto, prev)
+  def backup_push(bsto, opts={})
 
     stat = {}
+    prev = opts[:prev] || {}
+    log = opts[:log]
+    if !log
+      log = Logger.new(STDERR)
+      log.level = Logger::WARN
+    end
     
     # control jacket push
     jcks = nil
     _shared do
       ctl = _jacket_open(0)
       begin
-        min = prev[@id_hash] || 1
-        stat[@id_hash] = ctl.backup(bsto, min_history: min)
+        min = (prev[@id_hash] || 0) + 1
+        log.info('Backup push control %s at %d' % [@id_hash, min])
+        stat[@id_hash] = ctl.backup(bsto, min_history: min, log: log)
       ensure
         ctl.close
       end
@@ -430,8 +439,9 @@ class Binder
       jck = _jacket_open(info[:num])
       begin
         id = info[:id_hash]
-        min = prev[id] || 1
-        stat[id] = jck.backup(bsto, min_history: min)
+        min = (prev[id] || 0) + 1
+        log.info('Backup push jacket %s at %d' % [id, min])
+        stat[id] = jck.backup(bsto, min_history: min, log: log)
       ensure
         jck.close
       end
@@ -443,14 +453,26 @@ class Binder
 
   #####################################
   # Pull from backup store
-  def backup_pull(bsto)
-    
+  #
+  # @param bsto [Store] Backup store
+  # @param opts [Hash] Options
+  # @option opts [Hash] :log The log.  Defaults to SDTERR at warn level
+  def backup_pull(bsto, opts={})
+
+    log = opts[:log]
+    if !log
+      log = Logger.new(STDERR)
+      log.level = Logger::WARN
+    end
+
     @lock.do_ex do
 
       # control jacket
       ctl = _jacket_open(0)
       begin
-        ctl.restore(bsto)
+        log.info('Backup pull control %s' % @id_hash)
+        ctl.restore(bsto, log: log)
+        log.info('Backup pull update cache state')
         _update(ctl)
       ensure
         ctl.close()
@@ -462,11 +484,13 @@ class Binder
         begin
           jck = _jacket_open(info[:num])
         rescue Error::NonExistent
+          log.info('Backup pull create jacket %s' % info[:id_hash])
           _jacket_create_raw(info)
           jck = _jacket_open(info[:num])
         end
         begin
-          jck.restore(bsto)
+          log.info('Backup pull jacket %s' % info[:id_hash])
+          jck.restore(bsto, log: log)
         ensure
           jck.close
         end
