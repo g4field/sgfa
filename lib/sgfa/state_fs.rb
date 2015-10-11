@@ -237,7 +237,7 @@ class StateFs
   def tag(name, offs, max)
     raise Error::Sanity, 'State not open' if !@path
 
-    tagh, max = _list
+    tagh, tagm = _list
     raise Error::NonExistent, 'Tag does not exist' if !tagh[name]
     fn = File.join(@path, tagh[name].to_s)
     begin
@@ -281,7 +281,6 @@ class StateFs
     # read list of tags
     changed = false
     thash, max = _list
-#    self.list.each{|tag| thash[tag] = true }
 
     cng.each do |tag, hc|
       cnt = 0
