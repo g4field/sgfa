@@ -800,7 +800,6 @@ class Jacket
     current = {}
     count = 0
     hst = History.new
-    entry_max = 0
     max.downto(min) do |hnum|
 
       # history
@@ -812,7 +811,6 @@ class Jacket
       ensure
         fi.close
       end
-      entry_max = hst.entry_max if entry_max==0
 
       # entries
       hst.entries.each do |enum, rnum, hash|
@@ -860,7 +858,7 @@ class Jacket
       end
     end
     
-    @state.set(0, entry_max)
+    @state.set(0, max)
 
   end # def update()
 
