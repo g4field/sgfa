@@ -173,7 +173,7 @@ class Binder < Thor
     return if !(bnd = _open_binder)
     log = _get_log
     last = _get_last
-    s3 = ::Aws::S3::Client.new(opts)
+    s3 = ::Aws::S3::Client.new(aws)
     sto = ::Sgfa::StoreS3.new
     sto.open(s3, options[:bucket])
     last = bnd.backup_push(sto, prev: last, log: log)
@@ -182,6 +182,43 @@ class Binder < Thor
     _put_last(last)
 
   end # def backup_s3() 
+
+
+  #####################################
+  # Restore from AWS S3
+  desc 'restore_s3 <id_text>', 'Restore from AWS S3'
+  method_option :key, {
+    type: :string,
+    desc: 'Path of AWS credentials',
+    required: true,
+  }
+  method_option :bucket, {
+    type: :string,
+    desc: 'S3 bucket name',
+    required: true,
+  }
+  method_option :level, {
+    type: :string,
+    desc: 'Debug level, "debug", "info", "warn", "error"',
+    default: 'error',
+  }
+  def restore_s3(id_text)
+    if !options[:fs_path]
+      puts 'Binder type and location required.'
+     return
+    end
+    return if !(aws = _get_aws)
+    log = _get_log
+    s3 = ::Aws::S3::Client.new(aws)
+    sto = ::Sgfa::StoreS3.new
+    sto.open(s3, options[:bucket])
+    bnd = ::Sgfa::BinderFs.new
+    bnd.create_raw(options[:fs_path], id_text)
+    bnd.open(options[:fs_path])
+    bnd.backup_pull(sto, log: log)
+    bnd.close
+    sto.close
+  end # def restore_s3() 
 
 
   #####################################
