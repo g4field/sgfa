@@ -85,12 +85,12 @@ class BinderFs < Binder
     id_hash = create_raw(path, init[:id_text])
 
     # do the common creation
-    jck = _open_jacket(0)
     @path = path
     @id_hash = id_hash
     @jackets = {}
     @users = {}
     @values = {}
+    jck = _jacket_open(0)
     _create(jck, tr, init)
     jck.close
     _cache_write
