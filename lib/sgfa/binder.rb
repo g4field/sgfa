@@ -285,12 +285,28 @@ class Binder
   # @param tag [String] Tag name
   # @param offs [Integer] Offset to begin reading
   # @param max [Integer] Maximum number of entries to read
-  def read_tag(tr, tag, offs, max)
+  # @param opts [Hash] Options hash
+  # @option opts [Boolean] :raw Get the raw entry when permissions allow
+  # @return [Array] \[ enum, rnum, hnum, time, title, num_tags, num_attach,
+  #   \] Or, if opts[:raw], each Array item will consist of the Entry or,
+  #   if user does not have read permission, the info array.
+  def read_tag(tr, tag, offs, max, opts={})
+    raw = opts[:raw]
     _jacket(tr, 'read') do |jck|
       size, ents = jck.read_tag(tag, offs, max)
       lst = ents.map do |ent|
-        [ent.entry, ent.revision, ent.time, ent.title, ent.tags.size,
-          ent.attachments.size]
+        if raw
+          pl = ent.perms
+          begin
+            _perms(tr, pl)
+            item = ent
+          rescue Error::Permission
+            item = nil
+          end
+        end
+        item ||= [ent.entry, ent.revision, ent.history, ent.time, ent.title,
+          ent.tags.size, ent.attachments.size]
+        item
       end
       [size, lst]
     end
