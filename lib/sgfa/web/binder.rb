@@ -22,7 +22,6 @@ module Web
 #####################################################################
 # Binder web interface
 #
-# @todo Add a docket view 
 class Binder < Base
 
   #####################################
@@ -139,6 +138,7 @@ class Binder < Base
       when '_log'; return _get_log(env, path)
       when '_list'; return _get_list(env, path)
       when '_info'; return _get_info(env, path)
+      when '_docket'; return _get_docket(env, path)
       else; return
     end
 
@@ -170,6 +170,7 @@ class Binder < Base
 
   NavBarJacket = [
     ['Tag', '_tag'],
+    ['Docket', '_docket'],
     ['List', '_list'],
     ['Entry', nil],
     ['Edit', '_edit'],
@@ -260,6 +261,18 @@ class Binder < Base
       disp
     ]
   end # def _link_tag()
+
+
+  #####################################
+  # Link to a docket
+  def _link_dock(env, tag, disp)
+    "<a href='%s/%s/_docket/%s'>%s</a>" % [
+      env['SCRIPT_NAME'],
+      env['sgfa.jacket.url'],
+      _escape(tag),
+      disp
+    ]
+  end # def _link_dock()      
 
 
   #####################################
@@ -490,7 +503,7 @@ class Binder < Base
 
 
   TagTable = 
-    "<div class='title'>Tag: %s</div>\n" +
+    "<div class='tagname'>Tag: %s</div>\n" +
     "<table class='list'>\n<tr>" +
     "<th>Time</th><th>Title</th><th>Files</th><th>Tags</th><th>Edit</th>" +
     "</tr>\n%s</table>\n"
@@ -528,7 +541,7 @@ class Binder < Base
       html = 'No entries'
     else
       rows = ''
-      ents.reverse_each do |enum, rnum, time, title, tcnt, acnt|
+      ents.reverse_each do |enum, rnum, hnum, time, title, tcnt, acnt|
         rows << TagRow % [
           time.localtime.strftime("%F %T %z"),
           _link_entry(env, enum, _escape_html(title)),
@@ -545,11 +558,85 @@ class Binder < Base
       _escape(tag)
     ]
     query = (per != PageSize) ? { 'perpage' => per.to_s } : nil
-    pages = _link_pages(page, per, size, link, query)
+    pages = PageDiv % _link_pages(page, per, size, link, query)
 
     env['sgfa.status'] = :ok
     env['sgfa.html'] = html + pages
   end # def _get_tag()
+
+
+  # each entry
+  DocketEach = 
+"<div class='title'>%s</div>
+<div class='body'><em>Permission denied</em></div>
+<div class='sidebar'>
+<div class='time'>%s</div>
+<div class='history'>Revision: %d %s<br>History: %s</div>
+<div class='tags'>Number of tags: %d</div>
+<div class='attach'>Number of attachments: %d</div>
+</div>
+<div class='hash'>Hash: Permission denied</div>
+"
+
+  # Page division
+  PageDiv = "<div class='pages'>%s</div>\n"
+
+
+  #####################################
+  # Get a docket view
+  def _get_docket(env, path)
+    _navbar_jacket(env, 'Docket')
+
+    # tag, page, perpage
+    tag = path.empty? ? Jacket::TagAll : _escape_un(path.shift)
+    page = path.empty? ? 1 : path.shift.to_i
+    page = 1 if page == 0
+    rck = Rack::Request.new(env)
+    params = rck.GET
+    per = params['perpage'] ? params['perpage'].to_i : 0
+    per = PageSize if( per == 0 || per > PageSizeMax )
+
+    # get 
+    tr = _trans(env)
+    size, ents = env['sgfa.binder'].read_tag(tr, tag, (page-1)*per, per,
+      raw: true)
+    html = "<div class='tagname'>Docket: %s</div>\n" % _escape_html(tag)
+    if ents.size == 0
+      html << 'No entries'
+    else
+      rows = ''
+      ents.reverse_each do |item|
+        if item.is_a?(Entry)
+          rows << _disp_entry(env, item, jacket: false, current: true)
+        else
+          enum, rnum, hnum, time, title, tcnt, acnt = item
+          if rnum == 1
+            prev = 'previous'
+          else
+            prev = _link_revision(env, enum, rnum-1, 'previous')
+          end
+          hist = _link_history(env, hnum, hnum.to_s)
+          rows << DocketEach % [
+            _escape_html(title),
+            time.localtime.strftime("%F %T %z"),
+            rnum, prev, hist, tcnt, acnt,
+          ]
+        end
+      end
+      html << rows
+    end
+
+    link = '%s/%s/_docket/%s' % [
+      env['SCRIPT_NAME'],
+      env['sgfa.jacket.url'],
+      _escape(tag)
+    ]
+    query = (per != PageSize) ? { 'perpage' => per.to_s } : nil
+    pages = PageDiv % _link_pages(page, per, size, link, query)
+
+    env['sgfa.status'] = :ok
+    env['sgfa.html'] = html + pages
+  end # def _get_docket()
 
 
   LogTable = 
@@ -628,11 +715,11 @@ class Binder < Base
     "<div class='tags'>%s</div>\n" +
     "<div class='attach'>%s</div>\n" + 
     "</div>\n" +
-    "<div class='hash'>Hash: %s<br>Jacket: %s</div>\n"
+    "<div class='hash'>Hash: %s</div>\n"
 
   #####################################
   # Display an entry
-  def _disp_entry(env, ent)
+  def _disp_entry(env, ent, opts={})
 
     enum = ent.entry
     rnum = ent.revision
@@ -663,17 +750,20 @@ class Binder < Base
     else
       prev = _link_revision(env, enum, rnum-1, 'previous')
     end
-    curr = _link_entry(env, enum, 'current')
+    curr = opts[:current] ? '' : _link_entry(env, enum, 'current')
     edit = _link_edit(env, enum, 'edit')
+    hist = _link_history(env, hnum, hnum.to_s)
+    hash = ent.hash
+    hash << ('<br>Jacket: %s' % ent.jacket) if opts[:jacket]
 
     body = EntryDisp % [
       _escape_html(ent.title),
       _escape_html(ent.body),
       ent.time.localtime.strftime('%F %T %z'),
-      rnum, prev, curr, _link_history(env, hnum, hnum.to_s), edit,
+      rnum, prev, curr, hist, edit,
       tags,
       att,
-      ent.hash, ent.jacket
+      hash
     ]
 
     return body
@@ -735,14 +825,14 @@ class Binder < Base
 
   ListTable = 
     "<table class='list'>\n<tr>" +
-    "<th>Tag</th><th>Number</th></tr>\n" +
+    "<th>Tag</th><th>Number</th><th>View</th></tr>\n" +
     "%s\n</table>\n"
 
   ListPrefix =
-    "<tr><td class='prefix'>%s: prefix</td><td>%d tags</td></tr>\n"
+    "<tr><td class='prefix'>%s: prefix</td><td>%d tags</td><td></td></tr>\n"
 
   ListTag =
-    "<tr><td class='tag'>%s</td><td>%d entries</td></tr>\n"
+    "<tr><td class='tag'>%s</td><td>%d entries</td><td>%s %s</td></tr>\n"
 
   #####################################
   # Get list of tags
@@ -780,8 +870,12 @@ class Binder < Base
       end
       regular.sort.each do |tag|
         size, ents = bnd.read_tag(tr, tag, 0, 0)
-        rows << ListTag %
-          [_link_tag(env, tag, _escape_html(tag)), size]
+        rows << ListTag % [
+          _link_tag(env, tag, _escape_html(tag)),
+          size,
+          _link_tag(env, tag, 'Tag'),
+          _link_dock(env, tag, 'Docket')
+        ]
       end
 
     # list entire prefix
@@ -796,8 +890,12 @@ class Binder < Base
 
       prefix[pre].sort.each do |tag|
         size, ents = bnd.read_tag(tr, tag, 0, 0)
-        rows << ListTag %
-          [_link_tag(env, tag, _escape_html(tag)), size]
+        rows << ListTag % [
+          _link_tag(env, tag, _escape_html(tag)),
+          size,
+          _link_tag(env, tag, 'Tag'),
+          _link_dock(env, tag, 'Docket')
+        ]
       end
     end
 

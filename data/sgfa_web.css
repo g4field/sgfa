@@ -185,6 +185,17 @@ div#sgfa_web div.entry_left {
   width: 80%;
 }
 
+div#sgfa_web div.mainbody div.pages {
+  width: 100%;
+  border-top: 2px solid;
+}
+
+div#sgfa_web div.mainbody div.tagname {
+  width: 100%;
+  font-size: 150%;
+  border-bottom: 2px solid;
+}
+
 div#sgfa_web div.mainbody div.title {
   width: 100%;
   font-size: 125%;
@@ -215,6 +226,7 @@ div#sgfa_web div.mainbody div.sidebar div.tags {
 }
 
 div#sgfa_web div.attach {
+  border-bottom: thin solid;
 }
 
 div#sgfa_web div.mainbody div.sidebar div.user {
@@ -225,6 +237,7 @@ div#sgfa_web div.hash {
   width: 100%;
   clear: both;
   border-top: thin solid;
+  padding-bottom: 3px;
   font-family: monospace;
   font-size: 75%;
 }
