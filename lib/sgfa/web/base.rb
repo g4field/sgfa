@@ -169,6 +169,13 @@ class Base
   end # def _escape()
 
 
+  #####################################
+  # Escape URL using only percent encoding
+  def _escape_path(txt)
+    Rack::Utils.escape_path(txt)
+  end # def _escape_path():
+
+
   ##########################################
   # Unescape URL
   def _escape_un(txt)

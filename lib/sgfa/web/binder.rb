@@ -296,7 +296,7 @@ class Binder < Base
       enum,
       anum,
       hnum,
-      _escape(name),
+      _escape_path(name),
       disp
     ]
   end # def _link_attach()
