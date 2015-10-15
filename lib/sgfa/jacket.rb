@@ -289,15 +289,8 @@ class Jacket
 
       elst.each do |enum|
         rnum = @state.get(enum)
-        type, item = item_entry(enum, rnum)
-        fi = @store.read(type, item)
-        raise Error::Corrupt, 'Jacket current entry not present' if !fi
-        ent = Entry.new
-        begin
-          ent.canonical = fi.read
-        ensure
-          fi.close
-        end
+        ent = _read_entry(enum, rnum)
+        raise Error::Corrupt, 'Jacket current entry not present' if !ent
         ents.push ent         
       end
     end
