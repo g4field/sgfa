@@ -38,11 +38,11 @@ module Error
 
     # size
     size = str.size
-    if str.size > max
+    if size > max
       raise Error::Limits, '%s length %d is too large, limit %d' %
         [desc, size, max]
     end
-    if str.size < min
+    if size < min
       raise Error::Limits, '%s length %d is too small, limit %d' %
         [desc, size, min]
     end
