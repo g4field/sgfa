@@ -35,6 +35,9 @@ module Sgfa
 # * attachments - list of attached files with names (may be empty)
 # * max_attach - the maximum number of attachments ever belonging to
 #   the entry
+#
+# Within the body, you can add stats using a special line format.
+# See the description for {#stats}.
 # 
 class Entry
 
@@ -92,6 +95,32 @@ class Entry
   def self.limits_attach(str)
     Error.limits(str, 1, LimAttachMax, LimAttachInv, 'Attachment name')
   end # def self.limits_attach()
+
+
+  # Maximum Stat name
+  LimStatMax = 64
+
+  # Invalid Stat name characters
+  LimStatInv = /[[:cntrl:]@]|^_/
+
+  #####################################
+  # Limit check, stat name
+  def self.limits_stat(str)
+    Error.limits(str, 1, LimStatMax, LimStatInv, 'Stat name')
+  end # def self.limits_stat()
+
+
+  # Maximum Stat account
+  LimAcctMax = 64
+
+  # Invalid Stat account chars
+  LimAcctInv = /[[:cntrl:]@]|^_/
+
+  #####################################
+  # Limit check, stat account
+  def self.limits_acct(str)
+    Error.limits(str, 1, LimAcctMax, LimAcctInv, 'Stat account')
+  end # def self.limits_acct()
 
 
   #########################################################
@@ -299,6 +328,73 @@ class Entry
     @tags = @tags.uniq
     @tags.select{|tag| tag.start_with?('perm: ')}.map{|tag| tag[6..-1]}
   end # def perms
+
+
+  #####################################
+  # Get stats
+  #
+  # Stats are stored in the body of an entry in a special format.
+  # A stat line must be in the format:
+  # * newline
+  # * \'#\'
+  # * whitespace
+  # * <type string> cannot include \'@\'
+  # * whitespace
+  # * \'@\'
+  # * whitespace
+  # * <value> floating point, decimal optional
+  # * anything beyond is a comment and is ignored
+  # 
+  # Immediately following a stat line, there may be optional account line(s)
+  # in the format:
+  # * newline
+  # * \'#\'
+  # * whitespace
+  # * <account string> cannot include \'@\'
+  # 
+  # @return [Array] of stats in the format \[type, value, \[account, ..\]\]
+  def stats
+    return nil if !@body
+
+    stats = []
+    lines = @body.lines
+    ln = lines.shift
+    while ln
+
+      # find a stat line
+      ma = /^#\s+([^@]+)\s+@\s+(\d+(\.\d*)?)/.match(ln.chomp)
+      ln = lines.shift
+      next if !ma
+
+      # check the stat line
+      type = ma[1]
+      begin
+        Entry.limits_stat(type)
+      rescue Error::Limits
+        next
+      end
+      value = ma[2].to_f
+
+      # collect accounts
+      accounts = []
+      while ln
+        ma = /^#\s+([^@]+)\s*$/.match(ln.chomp)
+        break if !ma
+        acct = ma[1]
+        ln = lines.shift
+        begin
+          Entry.limits_acct(acct)
+        rescue Error::Limits
+          next
+        end
+        accounts.push acct
+      end
+
+      stats.push [type, value, accounts]
+    end
+
+    return stats
+  end # def stats
   
   
   #####################################

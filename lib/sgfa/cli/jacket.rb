@@ -9,6 +9,8 @@
 # This program is distributed WITHOUT ANY WARRANTY; without even the
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
+require 'csv'
+
 require 'aws-sdk'
 require 'thor'
 
@@ -270,6 +272,93 @@ class Jacket < Thor
     jck.close
 
   end # def check()
+
+
+  #####################################
+  # Get stats
+  desc 'stats', 'Get stats for each entry in csv format'
+  method_option :header, {
+    type: :boolean,
+    desc: 'Include a header row',
+    default: true
+  }
+  method_option :title, {
+    type: :boolean,
+    desc: 'Include the entry title',
+    default: false
+  }
+  method_option :time, {
+    type: :boolean,
+    desc: 'Include the entry date and time',
+    default: false
+  }
+  method_option :output, {
+    type: :string,
+    desc: 'File name for CSV, if not provided, STDOUT is used'
+  }   
+  def stats()
+    # open jacket
+    jck = _open_jacket
+    return if !jck
+
+    do_time = options[:time]
+    do_title = options[:title]
+
+    # CSV setup
+    if options[:output]
+      csv = ::CSV.open(options[:output], 'w', :encoding => 'utf-8')
+    else
+      csv = ::CSV.new(STDOUT, :encoding => 'utf-8')
+    end
+
+    # do the header row
+    if options[:header]
+      ha = [
+        'Stat name',
+        'Value', 
+        'Account',
+        'Entry',
+        'Revision'
+      ]
+      ha.push 'Date Time' if do_time
+      ha.push 'Title' if do_title
+      csv << ha
+    end
+
+    # read each entry and provide stats
+    hst = jck.read_history
+    hst.entry_max.times do |ix|
+      enum = ix + 1
+      ent = jck.read_entry(enum)
+      stats = ent.stats
+      next if stats.empty?
+
+      rnum = ent.revision
+      time = ent.time_str if do_time
+      title = ent.title if do_title
+
+      stats.each do |stat|
+        typ, val, accts = stat
+        if accts.empty?
+          ln = [typ, val, nil, enum, rnum]
+          ln.push time if do_time
+          ln.push title if do_title
+          csv << ln
+          next
+        end
+        accts.each do |acct|
+          ln = [typ, val, acct, enum, rnum]
+          ln.push time if do_time
+          ln.push title if do_title
+          csv << ln
+        end
+      end
+    end
+
+    jck.close
+    csv.close
+
+  end # def stats()
 
 
   #####################################
