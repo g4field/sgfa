@@ -1,13 +1,12 @@
 Gem::Specification.new do |gs|
 
   gs.name = 'sgfa'
-  gs.version = '0.1.0'
+  gs.version = '0.1.1'
   gs.license = 'GPL-3.0'
   gs.summary = 'Simple Group of Filing Applications'
   gs.description =
     "Group of related tools to manage filing of data in a structured " +
-    "fashion.  This is very much an initial release of a development " +
-    "effort."
+    "fashion.  This is very much a development effort." 
   gs.authors = ["Graham A. Field"]
   gs.email = 'gfield@retr.org'
   gs.homepage = 'https://github.com/g4field/sgfa'
@@ -27,6 +26,8 @@ Gem::Specification.new do |gs|
     'lib/sgfa/store_fs.rb',
     'lib/sgfa/lock_fs.rb',
     'lib/sgfa/jacket_fs.rb',
+
+    'lib/sgfa/store_s3.rb',
 
     'lib/sgfa/web/base.rb',
     'lib/sgfa/web/binder.rb',
